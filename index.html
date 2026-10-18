@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Market Rush Neon</title>
+    <meta name="description" content="A fast start.ng arcade game about catching rhythm sparks through a neon night market.">
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="playfield" aria-label="Market Rush Neon game area">
+        <canvas id="game" width="1280" height="800"></canvas>
+
+        <div class="hud">
+          <div class="player-card" id="player-card">
+            <img id="player-face" alt="">
+            <div class="player-copy">
+              <b id="player-name">Guest</b>
+              <span id="player-account">Play now</span>
+            </div>
+            <button id="signin" type="button" hidden>Sign in</button>
+          </div>
+
+          <div class="meters" aria-label="Current run stats">
+            <div>
+              <span>Score</span>
+              <strong id="score">0</strong>
+            </div>
+            <div>
+              <span>Streak</span>
+              <strong id="streak">0</strong>
+            </div>
+            <div>
+              <span>Time</span>
+              <strong id="time">0:00</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel title-panel" id="title-panel">
+          <p class="eyebrow">start.ng arcade</p>
+          <h1>Market Rush Neon</h1>
+          <p>
+            Dodge night-market traffic, catch rhythm sparks, and keep your combo alive.
+          </p>
+          <div class="actions">
+            <button id="start" type="button">Start run</button>
+          </div>
+        </div>
+
+        <div class="panel over-panel" id="over-panel" hidden>
+          <p class="eyebrow">run complete</p>
+          <h2 id="over-title">Nice run</h2>
+          <p id="over-summary">Score 0</p>
+          <p id="save-status" class="save-status">Sign in to save your score.</p>
+          <div class="actions">
+            <button id="again" type="button">Play again</button>
+            <button id="show-board" type="button" class="secondary">Leaderboard</button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="board" aria-label="Leaderboard">
+        <div class="board-head">
+          <div>
+            <p class="eyebrow">leaderboard</p>
+            <h2>Top Runners</h2>
+          </div>
+          <button id="refresh-board" type="button" title="Refresh leaderboard">↻</button>
+        </div>
+        <ol id="leaderboard">
+          <li class="muted">Leaderboard loads after the game is live.</li>
+        </ol>
+      </aside>
+    </main>
+
+    <script src="./game.js" defer></script>
+  </body>
+</html>
