@@ -1,6 +1,6 @@
-# Market Rush Neon
+# Market Rush
 
-A static start.ng canvas game. It uses the start.ng connect frame for player identity, renders the player's start.ng character in-game, and saves leaderboard stats for signed-in players.
+A static 2D start.ng canvas game set in Lagos markets. Players choose a market and a fictional Nigerian avatar, rush to pick groceries, food items, and fruits, dodge cars, bikes, and market pressure, and compete for Market Champion.
 
 Files are ready to publish without a build step:
 

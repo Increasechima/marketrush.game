@@ -1,5 +1,4 @@
 const START_NG = 'https://start.ng';
-const GAME_NAME = 'market-rush-neon';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -9,7 +8,6 @@ const ui = {
   streak: document.getElementById('streak'),
   time: document.getElementById('time'),
   title: document.getElementById('title-panel'),
-  help: document.getElementById('help-panel'),
   over: document.getElementById('over-panel'),
   start: document.getElementById('start'),
   again: document.getElementById('again'),
@@ -22,35 +20,118 @@ const ui = {
   face: document.getElementById('player-face'),
   name: document.getElementById('player-name'),
   account: document.getElementById('player-account'),
-  signin: document.getElementById('signin')
+  signin: document.getElementById('signin'),
+  marketOptions: [...document.querySelectorAll('.market-option')],
+  avatarOptions: [...document.querySelectorAll('.avatar-option')]
 };
 
-const defaultStyle = {
-  body: 'female',
-  primaryColor: '#30d5c8',
-  secondaryColor: '#ff5d73',
-  skinColor: '#8d5524',
-  hairColor: '#17120f',
-  hair: 'braids',
-  hat: 'cap',
-  accessory: 'backpack'
+const markets = {
+  balogun: {
+    name: 'Balogun Market',
+    sign: 'BALOGUN',
+    sky: ['#f6c968', '#f3a85d'],
+    road: '#754828',
+    left: '#ef476f',
+    right: '#2ec4b6',
+    shade: '#ffd34f'
+  },
+  mile12: {
+    name: 'Mile 12 Market',
+    sign: 'MILE 12',
+    sky: ['#d9c168', '#79a65a'],
+    road: '#5c552c',
+    left: '#4caf50',
+    right: '#f7c948',
+    shade: '#ff8c42'
+  },
+  oshodi: {
+    name: 'Oshodi Market',
+    sign: 'OSHODI',
+    sky: ['#f0b05e', '#b9674a'],
+    road: '#474139',
+    left: '#ff8c42',
+    right: '#2ec4b6',
+    shade: '#f7c948'
+  },
+  oyingbo: {
+    name: 'OyingBO Market'.replace('BO', 'bo'),
+    sign: 'OYINGBO',
+    sky: ['#d6b06a', '#7e8a59'],
+    road: '#654d30',
+    left: '#b5651d',
+    right: '#4caf50',
+    shade: '#ef476f'
+  }
 };
 
-let framePromise;
-let player = {
-  id: null,
-  name: 'Guest',
-  account: '',
-  style: defaultStyle,
-  face: ''
+const avatarPresets = {
+  aisha: {
+    label: 'Aisha',
+    role: 'Balogun shopper',
+    skinColor: '#d19a73',
+    hairColor: '#17120f',
+    primaryColor: '#f7c948',
+    secondaryColor: '#ef476f',
+    hair: 'braids',
+    accessory: 'earrings',
+    bagColor: '#5a352a'
+  },
+  kemi: {
+    label: 'Kemi',
+    role: 'Mainland auntie',
+    skinColor: '#8d5524',
+    hairColor: '#1b120c',
+    primaryColor: '#2ec4b6',
+    secondaryColor: '#ff8c42',
+    hair: 'bun',
+    accessory: 'gele',
+    bagColor: '#7a4f33'
+  },
+  tunde: {
+    label: 'Tunde',
+    role: 'Oshodi runner',
+    skinColor: '#6f3f24',
+    hairColor: '#111111',
+    primaryColor: '#4caf50',
+    secondaryColor: '#f7c948',
+    hair: 'short',
+    accessory: 'cap',
+    bagColor: '#26333d'
+  },
+  zainab: {
+    label: 'Zainab',
+    role: 'Mile 12 shopper',
+    skinColor: '#b8764f',
+    hairColor: '#17120f',
+    primaryColor: '#b5651d',
+    secondaryColor: '#4caf50',
+    hair: 'dreads',
+    accessory: 'headwrap',
+    bagColor: '#5a352a'
+  }
 };
-let signedIn = false;
+
+const groceries = [
+  { type: 'tomato', name: 'Tomatoes', points: 38, radius: 20 },
+  { type: 'pepper', name: 'Pepper', points: 42, radius: 18 },
+  { type: 'plantain', name: 'Plantain', points: 45, radius: 24 },
+  { type: 'orange', name: 'Oranges', points: 36, radius: 19 },
+  { type: 'yam', name: 'Yam', points: 48, radius: 22 },
+  { type: 'rice', name: 'Rice', points: 55, radius: 24 },
+  { type: 'bread', name: 'Agege bread', points: 52, radius: 25 },
+  { type: 'garri', name: 'Garri', points: 58, radius: 24 }
+];
+
+const hazards = [
+  { type: 'car', name: 'Car', damage: 34, radius: 34 },
+  { type: 'bike', name: 'Okada', damage: 28, radius: 30 },
+  { type: 'agbero', name: 'Agbero', damage: 25, radius: 30 }
+];
 
 const game = {
   mode: 'title',
-  width: 1280,
-  height: 800,
-  dpr: 1,
+  market: 'balogun',
+  avatar: 'aisha',
   t: 0,
   last: 0,
   elapsed: 0,
@@ -58,17 +139,63 @@ const game = {
   streak: 0,
   bestStreak: 0,
   energy: 100,
-  speed: 300,
-  slowmo: 0,
-  spawnSpark: 0,
+  speed: 260,
+  boostTime: 0,
+  spawnPickup: 0,
   spawnHazard: 0,
-  spawnGate: 3.5,
+  spawnBoost: 4,
+  message: '',
+  messageTime: 0,
   shake: 0,
-  player: { x: 0.5, y: 0.76, vx: 0, vy: 0, hurt: 0 },
+  roadTick: 0,
+  runner: { lane: 0, targetLane: 0, bob: 0 },
   items: [],
   keys: new Set(),
-  pointer: { active: false, x: 0, y: 0 }
+  pointer: { active: false, x: 0 }
 };
+
+let framePromise;
+let signedIn = false;
+let player = {
+  id: null,
+  name: 'Guest',
+  account: '',
+  face: '',
+  style: avatarPresets.aisha
+};
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function choice(list) {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function rand(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+function formatTime(seconds) {
+  const safe = Math.max(0, Math.floor(seconds));
+  return `${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, '0')}`;
+}
+
+function validColor(value, fallback) {
+  return /^#[0-9a-f]{6}$/i.test(value || '') ? value : fallback;
+}
+
+function normalizeStyle(style) {
+  return {
+    ...avatarPresets.aisha,
+    ...(style || {}),
+    skinColor: validColor(style?.skinColor, avatarPresets.aisha.skinColor),
+    hairColor: validColor(style?.hairColor, avatarPresets.aisha.hairColor),
+    primaryColor: validColor(style?.primaryColor, avatarPresets.aisha.primaryColor),
+    secondaryColor: validColor(style?.secondaryColor, avatarPresets.aisha.secondaryColor),
+    bagColor: validColor(style?.bagColor, avatarPresets.aisha.bagColor)
+  };
+}
 
 function connectFrame() {
   framePromise ??= new Promise((resolve, reject) => {
@@ -105,32 +232,59 @@ async function askStartNg(message, replyType, timeoutMs = 4500) {
   }
 }
 
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
+function roundedRect(c, x, y, w, h, r) {
+  c.beginPath();
+  c.roundRect(x, y, w, h, r);
+  c.fill();
 }
 
-function rand(min, max) {
-  return min + Math.random() * (max - min);
+function drawHair2d(c, x, y, scale, style) {
+  c.fillStyle = style.hairColor;
+  c.strokeStyle = style.hairColor;
+  c.lineCap = 'round';
+  if (style.hair === 'braids' || style.hair === 'dreads') {
+    c.beginPath();
+    c.ellipse(x, y - scale * 0.08, scale * 0.23, scale * 0.17, 0, Math.PI, 0);
+    c.fill();
+    c.lineWidth = scale * 0.04;
+    for (let i = -4; i <= 4; i += 1) {
+      c.beginPath();
+      c.moveTo(x + i * scale * 0.045, y - scale * 0.03);
+      c.quadraticCurveTo(x + i * scale * 0.06, y + scale * 0.14, x + i * scale * 0.035, y + scale * 0.28);
+      c.stroke();
+    }
+  } else if (style.hair === 'bun') {
+    c.beginPath();
+    c.arc(x, y - scale * 0.18, scale * 0.13, 0, Math.PI * 2);
+    c.arc(x, y - scale * 0.04, scale * 0.21, Math.PI, 0);
+    c.fill();
+  } else {
+    c.beginPath();
+    c.arc(x, y - scale * 0.02, scale * 0.22, Math.PI, 0);
+    c.fill();
+  }
 }
 
-function formatTime(seconds) {
-  const s = Math.max(0, Math.floor(seconds));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-}
-
-function cleanColor(value, fallback) {
-  return /^#[0-9a-f]{6}$/i.test(value || '') ? value : fallback;
-}
-
-function normalizeStyle(style) {
-  return {
-    ...defaultStyle,
-    ...(style || {}),
-    primaryColor: cleanColor(style?.primaryColor, defaultStyle.primaryColor),
-    secondaryColor: cleanColor(style?.secondaryColor, defaultStyle.secondaryColor),
-    skinColor: cleanColor(style?.skinColor, defaultStyle.skinColor),
-    hairColor: cleanColor(style?.hairColor, defaultStyle.hairColor)
-  };
+function drawAccessory2d(c, x, y, scale, style) {
+  if (style.accessory === 'gele' || style.accessory === 'headwrap') {
+    c.fillStyle = style.accessory === 'gele' ? '#f7c948' : style.primaryColor;
+    c.beginPath();
+    c.ellipse(x, y - scale * 0.16, scale * 0.29, scale * 0.13, 0, Math.PI, 0);
+    c.fill();
+    c.beginPath();
+    c.moveTo(x - scale * 0.18, y - scale * 0.16);
+    c.lineTo(x, y - scale * 0.34);
+    c.lineTo(x + scale * 0.13, y - scale * 0.15);
+    c.closePath();
+    c.fill();
+  }
+  if (style.accessory === 'cap') {
+    c.fillStyle = style.primaryColor;
+    c.beginPath();
+    c.arc(x, y - scale * 0.15, scale * 0.22, Math.PI, 0);
+    c.fill();
+    c.fillRect(x - scale * 0.02, y - scale * 0.15, scale * 0.28, scale * 0.06);
+  }
 }
 
 function drawFaceToCanvas(size, style) {
@@ -138,119 +292,56 @@ function drawFaceToCanvas(size, style) {
   face.width = size;
   face.height = size;
   const c = face.getContext('2d');
-  c.fillStyle = '#102126';
+  const s = normalizeStyle(style);
+
+  const bg = c.createLinearGradient(0, 0, size, size);
+  bg.addColorStop(0, s.primaryColor);
+  bg.addColorStop(1, s.secondaryColor);
+  c.fillStyle = bg;
   c.fillRect(0, 0, size, size);
-  c.fillStyle = style.primaryColor;
+
+  c.fillStyle = s.secondaryColor;
   c.beginPath();
-  c.arc(size * 0.5, size * 0.5, size * 0.46, 0, Math.PI * 2);
+  c.arc(size * 0.5, size * 0.7, size * 0.28, 0, Math.PI * 2);
   c.fill();
-  c.fillStyle = style.secondaryColor;
+
+  c.fillStyle = s.skinColor;
   c.beginPath();
-  c.arc(size * 0.5, size * 0.62, size * 0.38, 0, Math.PI * 2);
+  c.ellipse(size * 0.5, size * 0.45, size * 0.21, size * 0.25, 0, 0, Math.PI * 2);
   c.fill();
-  c.fillStyle = style.skinColor;
+  drawHair2d(c, size * 0.5, size * 0.38, size * 0.62, s);
+  drawAccessory2d(c, size * 0.5, size * 0.38, size * 0.62, s);
+
+  c.fillStyle = '#111';
   c.beginPath();
-  c.arc(size * 0.5, size * 0.44, size * 0.23, 0, Math.PI * 2);
+  c.arc(size * 0.42, size * 0.44, size * 0.025, 0, Math.PI * 2);
+  c.arc(size * 0.58, size * 0.44, size * 0.025, 0, Math.PI * 2);
   c.fill();
-  drawHair(c, size * 0.5, size * 0.34, size * 0.6, style);
-  drawHat(c, size * 0.5, size * 0.26, size * 0.52, style);
-  c.fillStyle = '#161616';
-  c.beginPath();
-  c.arc(size * 0.42, size * 0.43, size * 0.025, 0, Math.PI * 2);
-  c.arc(size * 0.58, size * 0.43, size * 0.025, 0, Math.PI * 2);
-  c.fill();
-  c.strokeStyle = '#27180f';
+
+  c.strokeStyle = '#3b1c13';
   c.lineWidth = Math.max(2, size * 0.018);
   c.beginPath();
-  c.arc(size * 0.5, size * 0.49, size * 0.09, 0.1, Math.PI - 0.1);
+  c.arc(size * 0.5, size * 0.52, size * 0.08, 0.15, Math.PI - 0.15);
   c.stroke();
-  if (style.accessory === 'glasses') {
-    c.strokeStyle = '#f6f1e7';
-    c.lineWidth = size * 0.025;
-    c.strokeRect(size * 0.35, size * 0.38, size * 0.12, size * 0.09);
-    c.strokeRect(size * 0.53, size * 0.38, size * 0.12, size * 0.09);
-    c.beginPath();
-    c.moveTo(size * 0.47, size * 0.42);
-    c.lineTo(size * 0.53, size * 0.42);
-    c.stroke();
-  }
+
+  c.fillStyle = '#f7c948';
+  c.beginPath();
+  c.arc(size * 0.27, size * 0.49, size * 0.025, 0, Math.PI * 2);
+  c.arc(size * 0.73, size * 0.49, size * 0.025, 0, Math.PI * 2);
+  c.fill();
+
   return face;
 }
 
-function drawHair(c, x, y, scale, style) {
-  c.fillStyle = style.hairColor;
-  const hair = style.hair;
-  if (hair === 'bald') return;
-  if (hair === 'afro') {
-    for (let i = 0; i < 9; i += 1) {
-      const a = (i / 9) * Math.PI * 2;
-      c.beginPath();
-      c.arc(x + Math.cos(a) * scale * 0.16, y + Math.sin(a) * scale * 0.09, scale * 0.12, 0, Math.PI * 2);
-      c.fill();
-    }
-  } else if (hair === 'braids' || hair === 'dreads') {
-    for (let i = -3; i <= 3; i += 1) {
-      c.beginPath();
-      c.roundRect(x + i * scale * 0.055, y - scale * 0.04, scale * 0.035, scale * 0.28, scale * 0.02);
-      c.fill();
-    }
-  } else if (hair === 'bun') {
-    c.beginPath();
-    c.arc(x, y - scale * 0.12, scale * 0.13, 0, Math.PI * 2);
-    c.arc(x, y, scale * 0.18, Math.PI, 0);
-    c.fill();
-  } else if (hair === 'ponytail') {
-    c.beginPath();
-    c.arc(x + scale * 0.18, y + scale * 0.02, scale * 0.1, 0, Math.PI * 2);
-    c.arc(x, y, scale * 0.18, Math.PI, 0);
-    c.fill();
-  } else {
-    c.beginPath();
-    c.arc(x, y, scale * 0.2, Math.PI, 0);
-    c.fill();
-  }
-}
-
-function drawHat(c, x, y, scale, style) {
-  if (!style.hat || style.hat === 'none') return;
-  if (style.hat === 'crown') {
-    c.fillStyle = '#ffd166';
-    c.beginPath();
-    c.moveTo(x - scale * 0.22, y + scale * 0.03);
-    c.lineTo(x - scale * 0.14, y - scale * 0.15);
-    c.lineTo(x, y);
-    c.lineTo(x + scale * 0.14, y - scale * 0.15);
-    c.lineTo(x + scale * 0.22, y + scale * 0.03);
-    c.closePath();
-    c.fill();
-  } else if (style.hat === 'tophat') {
-    c.fillStyle = '#20232b';
-    c.fillRect(x - scale * 0.14, y - scale * 0.18, scale * 0.28, scale * 0.18);
-    c.fillRect(x - scale * 0.22, y - scale * 0.02, scale * 0.44, scale * 0.05);
-  } else if (style.hat === 'beanie') {
-    c.fillStyle = '#ff5d73';
-    c.beginPath();
-    c.arc(x, y, scale * 0.2, Math.PI, 0);
-    c.fill();
-  } else {
-    c.fillStyle = '#30d5c8';
-    c.beginPath();
-    c.arc(x, y, scale * 0.2, Math.PI, 0);
-    c.fill();
-    c.fillRect(x, y - scale * 0.02, scale * 0.2, scale * 0.05);
-  }
-}
-
-function makeGuestFace() {
-  return drawFaceToCanvas(128, defaultStyle).toDataURL('image/png');
+function selectedStyle() {
+  return normalizeStyle(avatarPresets[game.avatar] || avatarPresets.aisha);
 }
 
 function renderPlayerCard() {
   const style = normalizeStyle(player.style);
-  const face = player.face || drawFaceToCanvas(128, style).toDataURL('image/png');
-  ui.face.src = face;
+  ui.face.src = player.face || drawFaceToCanvas(128, style).toDataURL('image/png');
   ui.name.textContent = player.name || 'Guest';
-  ui.account.textContent = signedIn && player.account ? `@${player.account}` : 'Guest runner';
+  ui.account.textContent = signedIn && player.account ? `@${player.account}` : 'Guest shopper';
   ui.signin.hidden = signedIn;
 }
 
@@ -271,8 +362,8 @@ async function loadPlayer() {
       id: null,
       name: 'Guest',
       account: '',
-      style: defaultStyle,
-      face: makeGuestFace()
+      style: avatarPresets.aisha,
+      face: drawFaceToCanvas(128, avatarPresets.aisha).toDataURL('image/png')
     };
   }
   renderPlayerCard();
@@ -289,24 +380,24 @@ async function saveRun() {
     time: Math.max(0, Math.round(game.elapsed))
   };
   if (!signedIn) {
-    ui.saveStatus.textContent = 'Sign in to save this run on start.ng.';
+    ui.saveStatus.textContent = 'Sign in to compete for Market Champion.';
     return;
   }
-  ui.saveStatus.textContent = 'Saving score...';
+  ui.saveStatus.textContent = 'Saving market haul...';
   const saved = await askStartNg({ type: 'startng:score', stats }, 'startng:scoreSaved', 6000);
   if (saved?.ok) {
     const rank = saved.result?.rank ? ` Rank #${saved.result.rank}.` : '';
-    ui.saveStatus.textContent = saved.result?.improved ? `New personal best.${rank}` : `Saved. Your best still stands.${rank}`;
+    ui.saveStatus.textContent = saved.result?.improved ? `New Market Champion run.${rank}` : `Saved. Your best haul still stands.${rank}`;
   } else {
-    ui.saveStatus.textContent = saved?.error || 'Could not save yet. The game saves after it is live on start.ng.';
+    ui.saveStatus.textContent = saved?.error || 'Could not save yet. Scores save after the game is live on start.ng.';
   }
 }
 
 async function loadLeaderboard() {
-  ui.board.innerHTML = '<li class="muted">Loading leaderboard...</li>';
+  ui.board.innerHTML = '<li class="muted">Loading Market Champion board...</li>';
   const board = await askStartNg({ type: 'startng:leaderboard', limit: 10 }, 'startng:leaderboardData', 5500);
   if (!board?.ok || !Array.isArray(board.entries) || board.entries.length === 0) {
-    ui.board.innerHTML = '<li class="muted">No live scores yet. Be the first runner after publishing.</li>';
+    ui.board.innerHTML = '<li class="muted">No champion yet. First live shopper takes the crown.</li>';
     return;
   }
   ui.board.replaceChildren(...board.entries.map((entry) => {
@@ -316,58 +407,43 @@ async function loadLeaderboard() {
       <span class="rank">#${entry.rank}</span>
       <span>
         <span class="name"></span>
-        <span class="meta">${entry.player_id === player.id ? 'Your run' : 'Runner'}</span>
+        <span class="meta">${entry.player_id === player.id ? 'Your market run' : 'Market shopper'}</span>
       </span>
       <span class="stats">${stats.score ?? entry.score ?? 0}<br>${stats.streak ?? 0} streak</span>
     `;
-    li.querySelector('.name').textContent = entry.name || 'Runner';
-    if (entry.player_id === player.id) li.style.borderColor = 'rgba(255, 209, 102, 0.55)';
+    li.querySelector('.name').textContent = entry.name || 'Shopper';
+    if (entry.player_id === player.id) li.style.borderColor = 'rgba(247, 201, 72, 0.65)';
     return li;
   }));
 }
 
-function resize() {
-  const rect = canvas.getBoundingClientRect();
-  game.dpr = Math.min(2, window.devicePixelRatio || 1);
-  game.width = Math.max(320, rect.width);
-  game.height = Math.max(400, rect.height);
-  canvas.width = Math.round(game.width * game.dpr);
-  canvas.height = Math.round(game.height * game.dpr);
-  ctx.setTransform(game.dpr, 0, 0, game.dpr, 0, 0);
+function setAvatar(key) {
+  game.avatar = avatarPresets[key] ? key : 'aisha';
+  ui.avatarOptions.forEach((button) => {
+    const active = button.dataset.avatar === game.avatar;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
 }
 
-function resetRun() {
-  game.mode = 'running';
-  game.t = 0;
-  game.elapsed = 0;
-  game.score = 0;
-  game.streak = 0;
-  game.bestStreak = 0;
-  game.energy = 100;
-  game.speed = 310;
-  game.slowmo = 0;
-  game.spawnSpark = 0.2;
-  game.spawnHazard = 1;
-  game.spawnGate = 4;
-  game.shake = 0;
-  game.items = [];
-  game.player.x = 0.5;
-  game.player.y = 0.78;
-  game.player.vx = 0;
-  game.player.vy = 0;
-  game.player.hurt = 0;
-  ui.title.hidden = true;
-  ui.over.hidden = true;
-  updateHud();
+function renderAvatarOptions() {
+  ui.avatarOptions.forEach((button) => {
+    const avatar = avatarPresets[button.dataset.avatar];
+    if (!avatar) return;
+    const img = button.querySelector('img');
+    img.src = drawFaceToCanvas(96, avatar).toDataURL('image/png');
+    img.alt = avatar.label;
+    button.title = avatar.role;
+  });
 }
 
-function endRun() {
-  game.mode = 'over';
-  ui.overTitle.textContent = game.score >= 900 ? 'Market legend' : game.score >= 450 ? 'Clean footwork' : 'Good warm-up';
-  ui.overSummary.textContent = `${Math.round(game.score)} points, ${game.bestStreak} best streak, ${formatTime(game.elapsed)} survived.`;
-  ui.over.hidden = false;
-  saveRun();
-  loadLeaderboard();
+function setMarket(key) {
+  game.market = markets[key] ? key : 'balogun';
+  ui.marketOptions.forEach((button) => {
+    const active = button.dataset.market === game.market;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
 }
 
 function updateHud() {
@@ -376,123 +452,545 @@ function updateHud() {
   ui.time.textContent = formatTime(game.elapsed);
 }
 
-function spawnSpark() {
-  const kinds = ['spark', 'spark', 'spark', 'bonus'];
+function resetRun() {
+  document.body.dataset.screen = 'running';
+  game.mode = 'running';
+  game.t = 0;
+  game.elapsed = 0;
+  game.score = 0;
+  game.streak = 0;
+  game.bestStreak = 0;
+  game.energy = 100;
+  game.speed = 265;
+  game.boostTime = 0;
+  game.spawnPickup = 0.18;
+  game.spawnHazard = 1.2;
+  game.spawnBoost = 5.5;
+  game.message = markets[game.market].name;
+  game.messageTime = 2;
+  game.shake = 0;
+  game.roadTick = 0;
+  game.runner.lane = 0;
+  game.runner.targetLane = 0;
+  game.items = [];
+  ui.title.hidden = true;
+  ui.over.hidden = true;
+  updateHud();
+}
+
+function endRun() {
+  document.body.dataset.screen = 'over';
+  game.mode = 'over';
+  ui.overTitle.textContent = game.score >= 1200 ? 'Market Champion' : game.score >= 650 ? 'Sharp shopper' : 'Try again, no dulling';
+  ui.overSummary.textContent = `${Math.round(game.score)} haul, ${game.bestStreak} shopping streak, ${formatTime(game.elapsed)} in ${markets[game.market].name}.`;
+  ui.over.hidden = false;
+  saveRun();
+  loadLeaderboard();
+}
+
+function roadBounds(y, w, h) {
+  const horizon = h * 0.24;
+  const p = clamp((y - horizon) / (h - horizon), 0, 1);
+  const top = w * 0.18;
+  const bottom = w * 0.98;
+  const road = top + (bottom - top) * p;
+  return {
+    center: w / 2,
+    width: road,
+    left: w / 2 - road / 2,
+    right: w / 2 + road / 2,
+    p
+  };
+}
+
+function laneToX(lane, y, w, h) {
+  const road = roadBounds(y, w, h);
+  return road.center + lane * road.width * 0.42;
+}
+
+function itemScreen(item, w, h) {
+  const x = laneToX(item.lane, item.y, w, h);
+  const scale = 0.45 + roadBounds(item.y, w, h).p * 1.25;
+  return { x, y: item.y, scale };
+}
+
+function spawnPickup() {
+  const data = choice(groceries);
   game.items.push({
-    type: kinds[Math.floor(Math.random() * kinds.length)],
-    x: rand(0.12, 0.88),
-    y: -0.08,
-    r: rand(16, 24),
-    speed: rand(0.92, 1.2),
-    wobble: rand(0, Math.PI * 2),
-    dead: false
+    ...data,
+    kind: 'pickup',
+    lane: rand(-0.95, 0.95),
+    y: canvas.clientHeight * 0.2,
+    spin: rand(0, Math.PI * 2),
+    velocity: rand(0.92, 1.14)
   });
 }
 
 function spawnHazard() {
-  const type = Math.random() > 0.5 ? 'cart' : 'sign';
+  const data = choice(hazards);
   game.items.push({
-    type,
-    x: rand(0.12, 0.88),
-    y: -0.12,
-    r: type === 'cart' ? 34 : 29,
-    speed: rand(0.9, 1.18),
-    wobble: rand(0, Math.PI * 2),
-    dead: false
+    ...data,
+    kind: 'hazard',
+    lane: rand(-0.98, 0.98),
+    y: canvas.clientHeight * 0.18,
+    spin: rand(0, Math.PI * 2),
+    velocity: rand(0.95, 1.2)
   });
 }
 
-function spawnGate() {
+function spawnBoost() {
   game.items.push({
-    type: 'gate',
-    x: rand(0.2, 0.8),
-    y: -0.1,
-    r: 42,
-    speed: 0.88,
-    wobble: rand(0, Math.PI * 2),
-    dead: false
+    kind: 'boost',
+    type: 'time',
+    name: 'Time boost',
+    radius: 25,
+    lane: rand(-0.86, 0.86),
+    y: canvas.clientHeight * 0.18,
+    spin: 0,
+    velocity: 0.9
   });
+}
+
+function drawSky(c, w, h) {
+  const market = markets[game.market];
+  const grad = c.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, market.sky[0]);
+  grad.addColorStop(0.72, market.sky[1]);
+  grad.addColorStop(1, '#173322');
+  c.fillStyle = grad;
+  c.fillRect(0, 0, w, h);
+
+  c.fillStyle = 'rgba(255, 240, 160, 0.45)';
+  c.beginPath();
+  c.arc(w * 0.78, h * 0.1, Math.min(w, h) * 0.09, 0, Math.PI * 2);
+  c.fill();
+}
+
+function drawRoad(c, w, h) {
+  const market = markets[game.market];
+  const horizon = h * 0.24;
+  c.fillStyle = market.road;
+  c.beginPath();
+  c.moveTo(w * 0.41, horizon);
+  c.lineTo(w * 0.59, horizon);
+  c.lineTo(w * 1.08, h);
+  c.lineTo(w * -0.08, h);
+  c.closePath();
+  c.fill();
+
+  c.strokeStyle = 'rgba(255, 220, 70, 0.84)';
+  c.lineWidth = Math.max(2, w * 0.006);
+  c.setLineDash([22, 34]);
+  c.lineDashOffset = -game.roadTick;
+  [-0.45, 0, 0.45].forEach((lane) => {
+    c.beginPath();
+    c.moveTo(laneToX(lane, horizon, w, h), horizon);
+    c.lineTo(laneToX(lane, h, w, h), h);
+    c.stroke();
+  });
+  c.setLineDash([]);
+}
+
+function drawStalls(c, w, h) {
+  const market = markets[game.market];
+  const horizon = h * 0.25;
+  for (let i = 0; i < 18; i += 1) {
+    const y = horizon + i * h * 0.052 + (game.roadTick % 48) - 48;
+    if (y < horizon - 30 || y > h + 80) continue;
+    const road = roadBounds(y, w, h);
+    const scale = 0.36 + road.p * 1.1;
+    [-1, 1].forEach((side) => {
+      const stallW = 62 * scale;
+      const stallH = 38 * scale;
+      const x = side < 0 ? road.left - stallW * 0.54 : road.right - stallW * 0.46;
+      const color = side < 0 ? market.left : market.right;
+      c.fillStyle = 'rgba(0, 0, 0, 0.2)';
+      c.fillRect(x + 4 * scale, y + stallH * 0.72, stallW, stallH * 0.18);
+      c.fillStyle = color;
+      roundedRect(c, x, y, stallW, stallH, 5 * scale);
+      c.fillStyle = market.shade;
+      c.beginPath();
+      c.moveTo(x - 4 * scale, y + 5 * scale);
+      c.lineTo(x + stallW * 0.25, y - stallH * 0.55);
+      c.lineTo(x + stallW * 0.82, y - stallH * 0.55);
+      c.lineTo(x + stallW + 7 * scale, y + 5 * scale);
+      c.closePath();
+      c.fill();
+      c.fillStyle = '#1d231b';
+      roundedRect(c, x + stallW * 0.14, y + stallH * 0.48, stallW * 0.72, stallH * 0.18, 3 * scale);
+      ['#d62828', '#4caf50', '#f7c948'].forEach((fruit, n) => {
+        c.fillStyle = fruit;
+        c.beginPath();
+        c.arc(x + stallW * (0.24 + n * 0.2), y + stallH * 0.54, 4.8 * scale, 0, Math.PI * 2);
+        c.fill();
+      });
+    });
+  }
+}
+
+function drawSign(c, w, h) {
+  const y = h * 0.14;
+  const signW = Math.min(260, w * 0.58);
+  c.fillStyle = 'rgba(16, 20, 15, 0.76)';
+  roundedRect(c, w / 2 - signW / 2, y, signW, 42, 8);
+  c.fillStyle = '#fff7e8';
+  c.font = `900 ${Math.max(18, Math.min(28, w * 0.055))}px system-ui, sans-serif`;
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  c.fillText(markets[game.market].sign, w / 2, y + 22);
+}
+
+function drawTomato(c, x, y, s) {
+  c.fillStyle = '#d62828';
+  c.beginPath();
+  c.arc(x - 5 * s, y, 10 * s, 0, Math.PI * 2);
+  c.arc(x + 5 * s, y, 10 * s, 0, Math.PI * 2);
+  c.fill();
+  c.fillStyle = '#2f9e44';
+  c.beginPath();
+  c.moveTo(x, y - 12 * s);
+  c.lineTo(x - 7 * s, y - 20 * s);
+  c.lineTo(x + 8 * s, y - 16 * s);
+  c.closePath();
+  c.fill();
+}
+
+function drawPickup(c, item, x, y, s) {
+  c.save();
+  c.translate(x, y);
+  c.rotate(Math.sin(game.t * 3 + item.spin) * 0.18);
+  if (item.type === 'tomato') {
+    drawTomato(c, 0, 0, s);
+  } else if (item.type === 'pepper') {
+    c.fillStyle = '#c1121f';
+    c.beginPath();
+    c.ellipse(0, 0, 8 * s, 20 * s, -0.3, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = '#2f9e44';
+    c.lineWidth = 3 * s;
+    c.beginPath();
+    c.moveTo(0, -16 * s);
+    c.quadraticCurveTo(7 * s, -25 * s, 13 * s, -19 * s);
+    c.stroke();
+  } else if (item.type === 'plantain') {
+    c.strokeStyle = '#f7c948';
+    c.lineWidth = 12 * s;
+    c.beginPath();
+    c.arc(0, -2 * s, 20 * s, 0.25, Math.PI * 1.2);
+    c.stroke();
+    c.strokeStyle = '#244f1f';
+    c.lineWidth = 2 * s;
+    c.stroke();
+  } else if (item.type === 'orange') {
+    c.fillStyle = '#ff9f1c';
+    c.beginPath();
+    c.arc(0, 0, 13 * s, 0, Math.PI * 2);
+    c.fill();
+  } else if (item.type === 'yam') {
+    c.fillStyle = '#9c6b3d';
+    c.beginPath();
+    c.ellipse(0, 0, 12 * s, 24 * s, 0.6, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = '#6f4518';
+    c.lineWidth = 2 * s;
+    c.beginPath();
+    c.moveTo(-12 * s, -4 * s);
+    c.lineTo(13 * s, 4 * s);
+    c.moveTo(-8 * s, 10 * s);
+    c.lineTo(9 * s, 15 * s);
+    c.stroke();
+  } else if (item.type === 'bread') {
+    c.fillStyle = '#d89b4a';
+    roundedRect(c, -22 * s, -12 * s, 44 * s, 24 * s, 12 * s);
+    c.strokeStyle = '#a96f2e';
+    c.lineWidth = 2 * s;
+    c.beginPath();
+    c.moveTo(-10 * s, -8 * s);
+    c.lineTo(-4 * s, 8 * s);
+    c.moveTo(8 * s, -8 * s);
+    c.lineTo(14 * s, 8 * s);
+    c.stroke();
+  } else {
+    c.fillStyle = item.type === 'rice' ? '#fff4c7' : '#f3df9b';
+    roundedRect(c, -18 * s, -22 * s, 36 * s, 44 * s, 5 * s);
+    c.fillStyle = '#4b3b1f';
+    c.font = `900 ${10 * s}px system-ui`;
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillText(item.type === 'rice' ? 'RICE' : 'GARRI', 0, 2 * s);
+  }
+  c.restore();
+}
+
+function drawCar(c, x, y, s) {
+  c.fillStyle = '#f77f00';
+  roundedRect(c, x - 28 * s, y - 17 * s, 56 * s, 34 * s, 7 * s);
+  c.fillStyle = '#141414';
+  roundedRect(c, x - 16 * s, y - 22 * s, 32 * s, 16 * s, 4 * s);
+  c.fillStyle = '#111';
+  [-18, 18].forEach((dx) => {
+    c.beginPath();
+    c.arc(x + dx * s, y + 17 * s, 7 * s, 0, Math.PI * 2);
+    c.fill();
+  });
+}
+
+function drawBike(c, x, y, s) {
+  c.strokeStyle = '#111';
+  c.lineWidth = 4 * s;
+  [-18, 18].forEach((dx) => {
+    c.beginPath();
+    c.arc(x + dx * s, y + 14 * s, 10 * s, 0, Math.PI * 2);
+    c.stroke();
+  });
+  c.strokeStyle = '#d62828';
+  c.beginPath();
+  c.moveTo(x - 18 * s, y + 14 * s);
+  c.lineTo(x, y - 7 * s);
+  c.lineTo(x + 18 * s, y + 14 * s);
+  c.lineTo(x - 2 * s, y + 14 * s);
+  c.stroke();
+  drawMiniPerson(c, x + 2 * s, y - 17 * s, s * 0.7, '#d62828', '#7f5539');
+}
+
+function drawMiniPerson(c, x, y, s, outfit, skin) {
+  c.fillStyle = skin;
+  c.beginPath();
+  c.arc(x, y - 12 * s, 8 * s, 0, Math.PI * 2);
+  c.fill();
+  c.fillStyle = outfit;
+  roundedRect(c, x - 9 * s, y - 4 * s, 18 * s, 24 * s, 7 * s);
+  c.strokeStyle = skin;
+  c.lineWidth = 4 * s;
+  c.beginPath();
+  c.moveTo(x - 8 * s, y + 4 * s);
+  c.lineTo(x - 20 * s, y + 15 * s);
+  c.moveTo(x + 8 * s, y + 4 * s);
+  c.lineTo(x + 18 * s, y + 12 * s);
+  c.stroke();
+}
+
+function drawAgbero(c, x, y, s) {
+  drawMiniPerson(c, x, y, s, '#d62828', '#7f5539');
+  c.fillStyle = '#111';
+  c.fillRect(x - 11 * s, y - 23 * s, 22 * s, 5 * s);
+  c.fillStyle = 'rgba(214, 40, 40, 0.9)';
+  roundedRect(c, x - 22 * s, y - 1 * s, 44 * s, 16 * s, 4 * s);
+  c.fillStyle = '#fff7e8';
+  c.font = `900 ${8 * s}px system-ui`;
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  c.fillText('AREA', x, y + 7 * s);
+}
+
+function drawBoost(c, x, y, s) {
+  c.save();
+  c.translate(x, y);
+  c.rotate(game.t * 2.4);
+  c.strokeStyle = '#2ec4b6';
+  c.lineWidth = 5 * s;
+  c.beginPath();
+  c.arc(0, 0, 18 * s, 0, Math.PI * 2);
+  c.stroke();
+  c.restore();
+  c.fillStyle = '#fff7e8';
+  c.font = `900 ${10 * s}px system-ui`;
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  c.fillText('TIME', x, y);
+}
+
+function drawItem(c, item, w, h) {
+  const p = itemScreen(item, w, h);
+  const s = p.scale;
+  c.fillStyle = 'rgba(0, 0, 0, 0.22)';
+  c.beginPath();
+  c.ellipse(p.x + 4 * s, p.y + 22 * s, 22 * s, 6 * s, 0, 0, Math.PI * 2);
+  c.fill();
+  if (item.kind === 'pickup') drawPickup(c, item, p.x, p.y, s);
+  if (item.kind === 'boost') drawBoost(c, p.x, p.y, s);
+  if (item.kind === 'hazard') {
+    if (item.type === 'car') drawCar(c, p.x, p.y, s);
+    if (item.type === 'bike') drawBike(c, p.x, p.y, s);
+    if (item.type === 'agbero') drawAgbero(c, p.x, p.y, s);
+  }
+}
+
+function drawRunner(c, w, h) {
+  const style = selectedStyle();
+  const y = h - Math.max(92, h * 0.15) + Math.sin(game.t * 11) * 4;
+  const x = laneToX(game.runner.lane, y, w, h);
+  const s = Math.min(1.2, Math.max(0.84, w / 390));
+
+  c.save();
+  c.translate(x + game.shake * rand(-6, 6), y);
+  c.fillStyle = 'rgba(0, 0, 0, 0.28)';
+  c.beginPath();
+  c.ellipse(0, 47 * s, 36 * s, 10 * s, 0, 0, Math.PI * 2);
+  c.fill();
+
+  c.strokeStyle = style.skinColor;
+  c.lineWidth = 8 * s;
+  c.lineCap = 'round';
+  const swing = Math.sin(game.t * 11) * 8 * s;
+  c.beginPath();
+  c.moveTo(-20 * s, -4 * s);
+  c.lineTo(-42 * s, 16 * s + swing);
+  c.moveTo(20 * s, -4 * s);
+  c.lineTo(42 * s, 14 * s - swing);
+  c.moveTo(-12 * s, 40 * s);
+  c.lineTo(-24 * s, 67 * s - swing * 0.4);
+  c.moveTo(12 * s, 40 * s);
+  c.lineTo(22 * s, 67 * s + swing * 0.4);
+  c.stroke();
+
+  c.fillStyle = style.secondaryColor;
+  c.beginPath();
+  c.moveTo(-28 * s, 24 * s);
+  c.quadraticCurveTo(0, 48 * s, 28 * s, 24 * s);
+  c.lineTo(18 * s, 52 * s);
+  c.lineTo(-18 * s, 52 * s);
+  c.closePath();
+  c.fill();
+
+  c.fillStyle = style.primaryColor;
+  roundedRect(c, -23 * s, -18 * s, 46 * s, 54 * s, 18 * s);
+  c.strokeStyle = '#fff7e8';
+  c.lineWidth = 4 * s;
+  c.beginPath();
+  c.arc(0, 18 * s, 25 * s, 0.16, Math.PI - 0.16);
+  c.stroke();
+
+  c.fillStyle = style.bagColor;
+  c.fillRect(-33 * s, 16 * s, 13 * s, 34 * s);
+
+  c.fillStyle = style.skinColor;
+  c.beginPath();
+  c.ellipse(0, -42 * s, 22 * s, 27 * s, 0, 0, Math.PI * 2);
+  c.fill();
+  drawHair2d(c, 0, -50 * s, s * 82, style);
+  drawAccessory2d(c, 0, -50 * s, s * 82, style);
+
+  c.fillStyle = '#111';
+  c.beginPath();
+  c.arc(-7 * s, -43 * s, 2.6 * s, 0, Math.PI * 2);
+  c.arc(8 * s, -43 * s, 2.6 * s, 0, Math.PI * 2);
+  c.fill();
+  c.strokeStyle = '#3b1c13';
+  c.lineWidth = 2 * s;
+  c.beginPath();
+  c.arc(0, -35 * s, 8 * s, 0.2, Math.PI - 0.2);
+  c.stroke();
+
+  c.fillStyle = '#111';
+  c.fillRect(-27 * s, 68 * s, 15 * s, 10 * s);
+  c.fillRect(13 * s, 68 * s, 15 * s, 10 * s);
+  c.restore();
+}
+
+function drawEnergy(c, w, h) {
+  const barW = Math.min(360, w - 32);
+  const x = 16;
+  const y = h - 28;
+  c.fillStyle = 'rgba(255, 247, 232, 0.2)';
+  roundedRect(c, x, y, barW, 12, 6);
+  const grad = c.createLinearGradient(x, y, x + barW, y);
+  grad.addColorStop(0, '#4caf50');
+  grad.addColorStop(0.55, '#f7c948');
+  grad.addColorStop(1, '#ef476f');
+  c.fillStyle = grad;
+  roundedRect(c, x, y, (barW * game.energy) / 100, 12, 6);
+}
+
+function drawMessage(c, w) {
+  if (!game.messageTime) return;
+  const alpha = clamp(game.messageTime, 0, 1);
+  c.save();
+  c.globalAlpha = alpha;
+  c.fillStyle = 'rgba(16, 20, 15, 0.86)';
+  roundedRect(c, w / 2 - 150, 156, 300, 34, 8);
+  c.fillStyle = '#fff7e8';
+  c.font = '900 15px system-ui';
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  c.fillText(game.message, w / 2, 173);
+  c.restore();
+}
+
+function updateRunner(dt) {
+  let steer = 0;
+  if (game.keys.has('ArrowLeft') || game.keys.has('a')) steer -= 1;
+  if (game.keys.has('ArrowRight') || game.keys.has('d')) steer += 1;
+  game.runner.targetLane = clamp(game.runner.targetLane + steer * dt * 1.6, -1, 1);
+  game.runner.lane += (game.runner.targetLane - game.runner.lane) * Math.min(1, dt * 9);
 }
 
 function update(dt) {
-  if (game.mode !== 'running') return;
-
-  const slow = game.slowmo > 0 ? 0.56 : 1;
   game.t += dt;
+  const running = game.mode === 'running';
+  const slow = game.boostTime > 0 ? 0.55 : 1;
+  game.roadTick = (game.roadTick + dt * (running ? game.speed * slow * 0.25 : 30)) % 48;
+  game.messageTime = Math.max(0, game.messageTime - dt);
+
+  if (!running) return;
+
   game.elapsed += dt;
-  game.speed += dt * 8;
-  game.slowmo = Math.max(0, game.slowmo - dt);
-  game.shake = Math.max(0, game.shake - dt * 18);
-  game.player.hurt = Math.max(0, game.player.hurt - dt);
+  game.speed += dt * 9.5;
+  game.boostTime = Math.max(0, game.boostTime - dt);
+  game.shake = Math.max(0, game.shake - dt * 5);
+  game.energy -= dt * (2.8 + game.elapsed / 28);
+  updateRunner(dt);
 
-  let ax = 0;
-  let ay = 0;
-  if (game.keys.has('ArrowLeft') || game.keys.has('a')) ax -= 1;
-  if (game.keys.has('ArrowRight') || game.keys.has('d')) ax += 1;
-  if (game.keys.has('ArrowUp') || game.keys.has('w')) ay -= 1;
-  if (game.keys.has('ArrowDown') || game.keys.has('s')) ay += 1;
-
-  if (game.pointer.active) {
-    const px = game.pointer.x / game.width;
-    const py = game.pointer.y / game.height;
-    ax += clamp((px - game.player.x) * 7, -1, 1);
-    ay += clamp((py - game.player.y) * 7, -1, 1);
-  }
-
-  game.player.vx = game.player.vx * 0.82 + ax * dt * 7;
-  game.player.vy = game.player.vy * 0.82 + ay * dt * 7;
-  game.player.x = clamp(game.player.x + game.player.vx * dt, 0.08, 0.92);
-  game.player.y = clamp(game.player.y + game.player.vy * dt, 0.2, 0.9);
-
-  game.spawnSpark -= dt;
+  game.spawnPickup -= dt;
   game.spawnHazard -= dt;
-  game.spawnGate -= dt;
-  if (game.spawnSpark <= 0) {
-    spawnSpark();
-    game.spawnSpark = rand(0.34, 0.72);
+  game.spawnBoost -= dt;
+  if (game.spawnPickup <= 0) {
+    spawnPickup();
+    game.spawnPickup = rand(0.34, 0.72);
   }
   if (game.spawnHazard <= 0) {
     spawnHazard();
-    game.spawnHazard = rand(0.75, 1.25) * Math.max(0.42, 1.08 - game.elapsed / 140);
+    game.spawnHazard = rand(0.76, 1.2) * Math.max(0.42, 1.1 - game.elapsed / 120);
   }
-  if (game.spawnGate <= 0) {
-    spawnGate();
-    game.spawnGate = rand(8, 12);
+  if (game.spawnBoost <= 0) {
+    spawnBoost();
+    game.spawnBoost = rand(8.5, 12.5);
   }
 
-  const px = game.player.x * game.width;
-  const py = game.player.y * game.height;
-  const playerRadius = Math.min(game.width, game.height) * 0.045;
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  const playerY = h - Math.max(92, h * 0.15);
+  const playerX = laneToX(game.runner.lane, playerY, w, h);
 
   for (const item of game.items) {
-    item.y += (game.speed * item.speed * slow * dt) / game.height;
-    item.wobble += dt * 3;
-    const ix = (item.x + Math.sin(item.wobble) * 0.014) * game.width;
-    const iy = item.y * game.height;
-    const distance = Math.hypot(px - ix, py - iy);
-    if (!item.dead && distance < playerRadius + item.r) {
+    item.y += game.speed * item.velocity * slow * dt;
+    const p = itemScreen(item, w, h);
+    const hit = Math.hypot(playerX - p.x, playerY - p.y) < item.radius * p.scale + 34;
+    if (!item.dead && hit) {
       item.dead = true;
-      if (item.type === 'spark' || item.type === 'bonus') {
+      if (item.kind === 'pickup') {
         game.streak += 1;
         game.bestStreak = Math.max(game.bestStreak, game.streak);
-        game.score += item.type === 'bonus' ? 70 + game.streak * 6 : 35 + game.streak * 4;
-        game.energy = clamp(game.energy + 5, 0, 100);
-      } else if (item.type === 'gate') {
-        game.score += 90;
-        game.slowmo = 2.4;
+        game.score += item.points + game.streak * 5;
+        game.energy = clamp(game.energy + 5.5, 0, 100);
+        game.message = `Picked ${item.name}`;
+      } else if (item.kind === 'boost') {
+        game.boostTime = 2.7;
         game.streak += 2;
         game.bestStreak = Math.max(game.bestStreak, game.streak);
+        game.score += 95;
+        game.message = 'Time boost';
       } else {
         game.streak = 0;
-        game.energy -= 26;
-        game.shake = 9;
-        game.player.hurt = 0.55;
+        game.energy -= item.damage;
+        game.shake = 0.35;
+        game.message = item.type === 'agbero' ? 'Agbero touched you' : item.type === 'bike' ? 'Okada close call' : 'Car hit';
       }
+      game.messageTime = 1.15;
     }
   }
 
-  game.items = game.items.filter((item) => !item.dead && item.y < 1.14);
-  game.energy -= dt * (3 + game.elapsed / 28);
+  game.items = game.items.filter((item) => !item.dead && item.y < h + 90);
   if (game.energy <= 0) {
     game.energy = 0;
     endRun();
@@ -500,280 +998,27 @@ function update(dt) {
   updateHud();
 }
 
-function drawBackground() {
-  const w = game.width;
-  const h = game.height;
-  const gradient = ctx.createLinearGradient(0, 0, 0, h);
-  gradient.addColorStop(0, '#101b1f');
-  gradient.addColorStop(0.48, '#172824');
-  gradient.addColorStop(1, '#100e13');
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, w, h);
-
-  ctx.save();
-  ctx.globalAlpha = 0.6;
-  for (let i = 0; i < 18; i += 1) {
-    const x = ((i * 137 + game.t * 18) % (w + 160)) - 80;
-    const y = (i % 6) * h * 0.13 + 60;
-    ctx.fillStyle = i % 2 ? '#19333a' : '#2a2f28';
-    ctx.fillRect(x, y, 72, 42);
-    ctx.fillStyle = i % 3 ? '#ffd166' : '#30d5c8';
-    ctx.fillRect(x + 8, y + 10, 18, 8);
-    ctx.fillRect(x + 40, y + 12, 20, 8);
-  }
-  ctx.restore();
-
-  const laneTop = h * 0.18;
-  const laneBottom = h * 0.96;
-  ctx.fillStyle = 'rgba(255, 247, 232, 0.045)';
-  ctx.beginPath();
-  ctx.moveTo(w * 0.17, laneTop);
-  ctx.lineTo(w * 0.83, laneTop);
-  ctx.lineTo(w * 0.98, laneBottom);
-  ctx.lineTo(w * 0.02, laneBottom);
-  ctx.closePath();
-  ctx.fill();
-
-  for (let i = 0; i < 7; i += 1) {
-    const x = w * (0.16 + i * 0.115);
-    ctx.strokeStyle = i % 2 ? 'rgba(48, 213, 200, 0.2)' : 'rgba(255, 209, 102, 0.2)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(x, laneTop);
-    ctx.lineTo(w * 0.5 + (x - w * 0.5) * 1.42, laneBottom);
-    ctx.stroke();
-  }
-
-  ctx.strokeStyle = 'rgba(255, 247, 232, 0.12)';
-  ctx.lineWidth = 1;
-  for (let y = (game.t * game.speed * 0.55) % 72; y < h; y += 72) {
-    ctx.beginPath();
-    ctx.moveTo(w * 0.1, y);
-    ctx.lineTo(w * 0.9, y + 10);
-    ctx.stroke();
-  }
+function render() {
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  ctx.clearRect(0, 0, w, h);
+  drawSky(ctx, w, h);
+  drawRoad(ctx, w, h);
+  drawStalls(ctx, w, h);
+  drawSign(ctx, w, h);
+  [...game.items].sort((a, b) => a.y - b.y).forEach((item) => drawItem(ctx, item, w, h));
+  drawRunner(ctx, w, h);
+  drawEnergy(ctx, w, h);
+  drawMessage(ctx, w);
 }
 
-function drawSpark(item, x, y) {
-  const r = item.r;
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(game.t * 3 + item.wobble);
-  ctx.fillStyle = item.type === 'bonus' ? '#ffd166' : '#78d45e';
-  ctx.shadowColor = ctx.fillStyle;
-  ctx.shadowBlur = 18;
-  ctx.beginPath();
-  for (let i = 0; i < 8; i += 1) {
-    const a = (i / 8) * Math.PI * 2;
-    const radius = i % 2 ? r * 0.42 : r;
-    ctx.lineTo(Math.cos(a) * radius, Math.sin(a) * radius);
-  }
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-}
-
-function drawCart(item, x, y) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.fillStyle = '#ff5d73';
-  ctx.strokeStyle = '#fff7e8';
-  ctx.lineWidth = 3;
-  ctx.roundRect(-34, -20, 68, 36, 7);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = '#ffd166';
-  ctx.fillRect(-24, -32, 48, 13);
-  ctx.fillStyle = '#151515';
-  ctx.beginPath();
-  ctx.arc(-22, 22, 8, 0, Math.PI * 2);
-  ctx.arc(22, 22, 8, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-}
-
-function drawSign(item, x, y) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(Math.sin(game.t * 2 + item.wobble) * 0.1);
-  ctx.fillStyle = '#fff7e8';
-  ctx.fillRect(-4, -34, 8, 68);
-  ctx.fillStyle = '#30d5c8';
-  ctx.strokeStyle = '#0b1114';
-  ctx.lineWidth = 4;
-  ctx.roundRect(-34, -38, 68, 32, 6);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = '#0b1114';
-  ctx.font = '900 13px system-ui';
-  ctx.textAlign = 'center';
-  ctx.fillText('SLOW', 0, -17);
-  ctx.restore();
-}
-
-function drawGate(item, x, y) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.strokeStyle = '#30d5c8';
-  ctx.lineWidth = 7;
-  ctx.shadowColor = '#30d5c8';
-  ctx.shadowBlur = 20;
-  ctx.beginPath();
-  ctx.arc(0, 0, item.r, 0.3, Math.PI * 1.7);
-  ctx.stroke();
-  ctx.fillStyle = '#fff7e8';
-  ctx.font = '900 12px system-ui';
-  ctx.textAlign = 'center';
-  ctx.fillText('TIME', 0, 4);
-  ctx.restore();
-}
-
-function drawItems() {
-  const sorted = [...game.items].sort((a, b) => a.y - b.y);
-  for (const item of sorted) {
-    const x = (item.x + Math.sin(item.wobble) * 0.014) * game.width;
-    const y = item.y * game.height;
-    if (item.type === 'spark' || item.type === 'bonus') drawSpark(item, x, y);
-    if (item.type === 'cart') drawCart(item, x, y);
-    if (item.type === 'sign') drawSign(item, x, y);
-    if (item.type === 'gate') drawGate(item, x, y);
-  }
-}
-
-function drawCharacter(x, y, scale, style) {
-  const bob = Math.sin(game.t * 12) * scale * 0.025;
-  ctx.save();
-  ctx.translate(x, y + bob);
-  if (game.player.hurt > 0) {
-    ctx.globalAlpha = 0.72 + Math.sin(game.t * 40) * 0.22;
-  }
-
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
-  ctx.beginPath();
-  ctx.ellipse(0, scale * 0.58, scale * 0.34, scale * 0.09, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.strokeStyle = style.skinColor;
-  ctx.lineWidth = scale * 0.08;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(-scale * 0.15, scale * 0.42);
-  ctx.lineTo(-scale * 0.25, scale * 0.68);
-  ctx.moveTo(scale * 0.15, scale * 0.42);
-  ctx.lineTo(scale * 0.24, scale * 0.68);
-  ctx.stroke();
-
-  ctx.strokeStyle = style.secondaryColor;
-  ctx.beginPath();
-  ctx.moveTo(-scale * 0.12, scale * 0.08);
-  ctx.lineTo(-scale * 0.28, scale * 0.34);
-  ctx.moveTo(scale * 0.12, scale * 0.08);
-  ctx.lineTo(scale * 0.28, scale * 0.34);
-  ctx.stroke();
-
-  ctx.fillStyle = style.secondaryColor;
-  ctx.beginPath();
-  ctx.roundRect(-scale * 0.2, scale * 0.12, scale * 0.4, scale * 0.4, scale * 0.08);
-  ctx.fill();
-
-  ctx.fillStyle = style.primaryColor;
-  ctx.beginPath();
-  ctx.roundRect(-scale * 0.24, -scale * 0.16, scale * 0.48, scale * 0.34, scale * 0.09);
-  ctx.fill();
-
-  if (style.accessory === 'scarf') {
-    ctx.fillStyle = '#ffd166';
-    ctx.fillRect(-scale * 0.25, -scale * 0.13, scale * 0.5, scale * 0.06);
-    ctx.fillRect(scale * 0.1, -scale * 0.12, scale * 0.08, scale * 0.28);
-  }
-  if (style.accessory === 'backpack') {
-    ctx.fillStyle = '#26333d';
-    ctx.beginPath();
-    ctx.roundRect(scale * 0.19, -scale * 0.08, scale * 0.16, scale * 0.34, scale * 0.05);
-    ctx.fill();
-  }
-
-  ctx.fillStyle = style.skinColor;
-  ctx.beginPath();
-  ctx.arc(0, -scale * 0.34, scale * 0.22, 0, Math.PI * 2);
-  ctx.fill();
-  drawHair(ctx, 0, -scale * 0.43, scale, style);
-  drawHat(ctx, 0, -scale * 0.56, scale, style);
-
-  ctx.fillStyle = '#101010';
-  ctx.beginPath();
-  ctx.arc(-scale * 0.07, -scale * 0.35, scale * 0.018, 0, Math.PI * 2);
-  ctx.arc(scale * 0.07, -scale * 0.35, scale * 0.018, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = '#23140e';
-  ctx.lineWidth = scale * 0.018;
-  ctx.beginPath();
-  ctx.arc(0, -scale * 0.3, scale * 0.06, 0.1, Math.PI - 0.1);
-  ctx.stroke();
-
-  if (style.accessory === 'glasses') {
-    ctx.strokeStyle = '#fff7e8';
-    ctx.lineWidth = scale * 0.018;
-    ctx.strokeRect(-scale * 0.13, -scale * 0.39, scale * 0.1, scale * 0.07);
-    ctx.strokeRect(scale * 0.03, -scale * 0.39, scale * 0.1, scale * 0.07);
-  }
-  if (style.accessory === 'beard') {
-    ctx.fillStyle = style.hairColor;
-    ctx.beginPath();
-    ctx.arc(0, -scale * 0.25, scale * 0.1, 0, Math.PI);
-    ctx.fill();
-  }
-  if (style.accessory === 'earrings') {
-    ctx.fillStyle = '#ffd166';
-    ctx.beginPath();
-    ctx.arc(-scale * 0.22, -scale * 0.31, scale * 0.025, 0, Math.PI * 2);
-    ctx.arc(scale * 0.22, -scale * 0.31, scale * 0.025, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
-}
-
-function drawEnergy() {
-  const w = Math.min(360, game.width - 32);
-  const x = 16;
-  const y = game.height - 28;
-  ctx.fillStyle = 'rgba(255, 247, 232, 0.12)';
-  ctx.roundRect(x, y, w, 12, 6);
-  ctx.fill();
-  const fill = (w * game.energy) / 100;
-  const grad = ctx.createLinearGradient(x, y, x + w, y);
-  grad.addColorStop(0, '#78d45e');
-  grad.addColorStop(0.55, '#ffd166');
-  grad.addColorStop(1, '#ff5d73');
-  ctx.fillStyle = grad;
-  ctx.roundRect(x, y, fill, 12, 6);
-  ctx.fill();
-}
-
-function draw() {
-  ctx.save();
-  if (game.shake > 0) {
-    ctx.translate(rand(-game.shake, game.shake), rand(-game.shake, game.shake));
-  }
-  drawBackground();
-  drawItems();
-  drawCharacter(
-    game.player.x * game.width,
-    game.player.y * game.height,
-    Math.min(game.width, game.height) * 0.13,
-    normalizeStyle(player.style)
-  );
-  drawEnergy();
-  if (game.slowmo > 0) {
-    ctx.fillStyle = 'rgba(48, 213, 200, 0.09)';
-    ctx.fillRect(0, 0, game.width, game.height);
-  }
-  ctx.restore();
-
-  if (game.mode === 'title') {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
-    ctx.fillRect(0, 0, game.width, game.height);
-  }
+function resize() {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.round(rect.width * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  render();
 }
 
 function loop(now) {
@@ -781,17 +1026,14 @@ function loop(now) {
   const dt = Math.min(0.033, seconds - (game.last || seconds));
   game.last = seconds;
   update(dt);
-  draw();
+  render();
   requestAnimationFrame(loop);
 }
 
-function canvasPoint(event) {
+function pointerLane(event) {
   const rect = canvas.getBoundingClientRect();
   const point = event.touches ? event.touches[0] : event;
-  return {
-    x: point.clientX - rect.left,
-    y: point.clientY - rect.top
-  };
+  return clamp(((point.clientX - rect.left) / rect.width - 0.5) * 2.1, -1, 1);
 }
 
 ui.start.addEventListener('click', resetRun);
@@ -799,10 +1041,12 @@ ui.again.addEventListener('click', resetRun);
 ui.showBoard.addEventListener('click', loadLeaderboard);
 ui.refreshBoard.addEventListener('click', loadLeaderboard);
 ui.signin.addEventListener('click', signIn);
+ui.marketOptions.forEach((button) => button.addEventListener('click', () => setMarket(button.dataset.market)));
+ui.avatarOptions.forEach((button) => button.addEventListener('click', () => setAvatar(button.dataset.avatar)));
 
 addEventListener('keydown', (event) => {
   const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
-  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'a', 'd', 'w', 's'].includes(key)) {
+  if (['ArrowLeft', 'ArrowRight', 'a', 'd'].includes(key)) {
     event.preventDefault();
     game.keys.add(key);
   }
@@ -820,13 +1064,13 @@ addEventListener('keyup', (event) => {
 canvas.addEventListener('pointerdown', (event) => {
   if (game.mode !== 'running') return;
   game.pointer.active = true;
-  Object.assign(game.pointer, canvasPoint(event));
+  game.runner.targetLane = pointerLane(event);
   canvas.setPointerCapture(event.pointerId);
 });
 
 canvas.addEventListener('pointermove', (event) => {
-  if (!game.pointer.active) return;
-  Object.assign(game.pointer, canvasPoint(event));
+  if (!game.pointer.active || game.mode !== 'running') return;
+  game.runner.targetLane = pointerLane(event);
 });
 
 canvas.addEventListener('pointerup', () => {
@@ -838,14 +1082,16 @@ canvas.addEventListener('pointercancel', () => {
 });
 
 addEventListener('resize', resize);
-addEventListener('focus', () => {
-  loadPlayer();
-});
+addEventListener('focus', () => loadPlayer());
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) loadPlayer();
 });
 
-player.face = makeGuestFace();
+document.body.dataset.screen = 'title';
+renderAvatarOptions();
+setMarket('balogun');
+setAvatar('aisha');
+player.face = drawFaceToCanvas(128, avatarPresets.aisha).toDataURL('image/png');
 renderPlayerCard();
 resize();
 loadPlayer().then(loadLeaderboard);

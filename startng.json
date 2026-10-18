@@ -1,8 +1,8 @@
 {
   "leaderboard": {
     "stats": [
-      { "key": "score", "label": "Market score", "order": "highest" },
-      { "key": "streak", "label": "Best streak", "order": "highest" },
+      { "key": "score", "label": "Market haul", "order": "highest" },
+      { "key": "streak", "label": "Shopping streak", "order": "highest" },
       { "key": "time", "label": "Time survived", "order": "highest", "format": "time" }
     ]
   }

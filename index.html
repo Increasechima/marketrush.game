@@ -3,13 +3,13 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Market Rush Neon</title>
-    <meta name="description" content="A fast start.ng arcade game about catching rhythm sparks through a neon night market.">
+    <title>Market Rush</title>
+    <meta name="description" content="Rush through a Lagos market, pick groceries and food items, dodge traffic and market pressure, and become Market Champion.">
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
     <main class="shell">
-      <section class="playfield" aria-label="Market Rush Neon game area">
+      <section class="playfield" aria-label="Market Rush game area">
         <canvas id="game" width="1280" height="800"></canvas>
 
         <div class="hud">
@@ -39,11 +39,23 @@
         </div>
 
         <div class="panel title-panel" id="title-panel">
-          <p class="eyebrow">start.ng arcade</p>
-          <h1>Market Rush Neon</h1>
+          <p class="eyebrow">lagos market run</p>
+          <h1>Market Rush</h1>
           <p>
-            Dodge night-market traffic, catch rhythm sparks, and keep your combo alive.
+            Pick foodstuffs fast, dodge cars, bikes, and market wahala, then hold your shopping streak.
           </p>
+          <div class="market-picker" aria-label="Choose market">
+            <button type="button" class="market-option active" data-market="balogun">Balogun</button>
+            <button type="button" class="market-option" data-market="mile12">Mile 12</button>
+            <button type="button" class="market-option" data-market="oshodi">Oshodi</button>
+            <button type="button" class="market-option" data-market="oyingbo">Oyingbo</button>
+          </div>
+          <div class="avatar-picker" aria-label="Choose avatar">
+            <button type="button" class="avatar-option active" data-avatar="aisha"><img alt=""><span>Aisha</span></button>
+            <button type="button" class="avatar-option" data-avatar="kemi"><img alt=""><span>Kemi</span></button>
+            <button type="button" class="avatar-option" data-avatar="tunde"><img alt=""><span>Tunde</span></button>
+            <button type="button" class="avatar-option" data-avatar="zainab"><img alt=""><span>Zainab</span></button>
+          </div>
           <div class="actions">
             <button id="start" type="button">Start run</button>
           </div>
@@ -65,7 +77,7 @@
         <div class="board-head">
           <div>
             <p class="eyebrow">leaderboard</p>
-            <h2>Top Runners</h2>
+            <h2>Market Champion</h2>
           </div>
           <button id="refresh-board" type="button" title="Refresh leaderboard">↻</button>
         </div>
@@ -75,6 +87,6 @@
       </aside>
     </main>
 
-    <script src="./game.js" defer></script>
+    <script src="./game.js"></script>
   </body>
 </html>
